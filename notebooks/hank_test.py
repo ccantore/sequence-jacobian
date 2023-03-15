@@ -148,3 +148,22 @@ print(f"Goods market clearing (untargeted): {ss0['goods_mkt']: 0.2e}")
 plt.plot(ss0.internals['hh']['a_grid'], ss0.internals['hh']['n'].T)
 plt.xlabel('Assets'), plt.ylabel('Labor supply')
 plt.show()
+
+
+#This code defines a function nkpc that takes in several parameters and returns an expression that represents the New Keynesian Phillips Curve.
+
+#The function is then added to a list called blocks along with other blocks that represent different components of a one-asset Heterogeneous Agent New Keynesian (HANK) model. The list of blocks is then used to create a hank model using the create_model function.
+
+#The code then prints out each block in the hank model.
+
+@simple
+def nkpc(pi, w, Z, Y, r, mu, kappa):
+    nkpc_res = kappa * (w / Z - 1 / mu) + Y(+1) / Y * (1 + pi(+1)).apply(np.log) / (1 + r(+1))\
+               - (1 + pi).apply(np.log)
+    return nkpc_res
+
+
+blocks = [hh_ext, firm, monetary, fiscal, mkt_clearing, nkpc]
+hank = create_model(blocks, name="One-Asset HANK")
+
+print(*hank.blocks, sep='\n')
