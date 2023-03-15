@@ -121,8 +121,30 @@ calibration = {'eis': 0.5, 'frisch': 0.5, 'rho_e': 0.966, 'sd_e': 0.5, 'nE': 7,
                'amin': 0.0, 'amax': 150, 'nA': 500, 'Y': 1.0, 'Z': 1.0, 'pi': 0.0,
                'mu': 1.2, 'kappa': 0.1, 'rstar': 0.005, 'phi': 1.5, 'B': 5.6}
 
+#parameters related to agent heterogeneity, such as the elasticity of intertemporal substitution (eis), the Frisch labor supply elasticity (frisch), the persistence of the Markov process for skill levels (rho_e), and the standard deviation of the process (sd_e). Other parameters relate to the macroeconomic environment, such as the productivity level (Z), the steady-state inflation rate (pi), and the discount factor (beta).
+
 #Solve for the steady state
+#The code also defines two dictionaries called "unknowns_ss" and "targets_ss". These dictionaries are used to specify the unknown parameters and targets for the steady-state solution of the model. In this case, the unknowns are the discount factor (beta) and the inverse of the Frisch elasticity (vphi), and the targets are the market clearing conditions for assets and labor.
 unknowns_ss = {'beta': 0.986, 'vphi': 0.8}
 targets_ss = {'asset_mkt': 0, 'labor_mkt': 0}
 
+#the code calls the "solve_steady_state" method of the "hank_ss" model to compute the steady-state solution of the model given the parameter values, unknowns, and targets specified in the dictionaries. The "solver" parameter specifies the numerical method used to solve the system of equations that determines the steady state. In this case, the "hybr" solver is used, which is a hybrid method that combines a numerical root-finding algorithm with a gradient-based optimization algorithm.
 ss0 = hank_ss.solve_steady_state(calibration, unknowns_ss, targets_ss, solver="hybr")
+
+#Print market clearings
+print(f"Asset market clearing: {ss0['asset_mkt']: 0.2e}")
+print(f"Labor market clearing: {ss0['labor_mkt']: 0.2e}")
+print(f"Goods market clearing (untargeted): {ss0['goods_mkt']: 0.2e}")
+
+#plotting a graph of labor supply as a function of assets for the steady state solution ss0 of the 
+#Heterogeneous-Agent New Keynesian (HANK) model.
+
+#The plt.plot() function is used to create a line plot with ss0.internals['hh']['a_grid'] as the x-axis and 
+#ss0.internals['hh']['n'].T as the y-axis. ss0.internals contains all the internal variables of the model in steady state, 
+#and 'hh' is the name of the hetblock that represents heterogeneous households.
+
+#The plt.xlabel() and plt.ylabel() functions are used to set the x-axis and y-axis labels, respectively. 
+#Finally, plt.show() is used to display the plot.
+plt.plot(ss0.internals['hh']['a_grid'], ss0.internals['hh']['n'].T)
+plt.xlabel('Assets'), plt.ylabel('Labor supply')
+plt.show()
