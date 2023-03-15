@@ -167,3 +167,45 @@ blocks = [hh_ext, firm, monetary, fiscal, mkt_clearing, nkpc]
 hank = create_model(blocks, name="One-Asset HANK")
 
 print(*hank.blocks, sep='\n')
+
+#This code is performing a test to ensure that the steady state ss calculated by hank.steady_state(ss0) is consistent with the initial guess ss0.
+
+#Specifically, for each key k in ss0, the code checks whether all the elements of ss[k] are approximately equal to the corresponding elements in ss0[k] using np.isclose() and np.all(). If this condition is not satisfied for any k, the assert statement will raise an AssertionError, indicating that the steady state calculation is incorrect. If the condition is satisfied for all k, the test passes and the code continues to run.
+ss = hank.steady_state(ss0)
+
+for k in ss0.keys():
+    assert np.all(np.isclose(ss[k], ss0[k]))
+    
+    
+   # The code above calculates the general equilibrium Jacobian matrix G of the One-Asset HANK model defined earlier.
+
+#T is the number of periods for which the Jacobian is calculated.
+#exogenous is a list of exogenous variables, which are assumed to be known in the model.
+#unknowns is a list of endogenous variables that are being solved for.
+#targets is a list of the model equations that are being solved.
+#The hank.solve_jacobian method computes the derivatives of the endogenous variables with respect to the other endogenous and exogenous variables in the model, and stores the results in the Jacobian matrix G.
+
+#The resulting Jacobian matrix can be used to analyze the dynamic properties of the model, such as stability and impulse response functions.
+
+# setup
+T = 300
+exogenous = ['rstar', 'Z']
+unknowns = ['pi', 'w', 'Y']
+targets = ['nkpc_res', 'asset_mkt', 'labor_mkt']
+
+# general equilibrium jacobians
+G = hank.solve_jacobian(ss, unknowns, targets, exogenous, T=T)
+
+print(G)
+
+#Now let's consider 25 basis point monetary policy shocks with different persistences and plot the response of inflation.
+rhos = np.array([0.2, 0.4, 0.6, 0.8, 0.9])
+
+drstar = -0.0025 * rhos ** (np.arange(T)[:, np.newaxis])
+dpi = G['pi']['rstar'] @ drstar
+
+plt.plot(10000 * dpi[:21])
+plt.title(r'Inflation responses monetary policy shocks')
+plt.xlabel('quarters')
+plt.ylabel('bp deviation from ss')
+plt.show()
