@@ -209,3 +209,5 @@ plt.title(r'Inflation responses monetary policy shocks')
 plt.xlabel('quarters')
 plt.ylabel('bp deviation from ss')
 plt.show()
+
+
