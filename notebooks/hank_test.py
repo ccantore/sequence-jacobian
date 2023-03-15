@@ -198,10 +198,10 @@ G = hank.solve_jacobian(ss, unknowns, targets, exogenous, T=T)
 
 print(G)
 
-#Now let's consider 25 basis point monetary policy shocks with different persistences and plot the response of inflation.
-rhos = np.array([0.2, 0.4, 0.6, 0.8, 0.9])
+#Now let's consider 25 basis point monetary policy shocks and plot the response of inflation.
+rhos = 0.9
 
-drstar = -0.0025 * rhos ** (np.arange(T)[:, np.newaxis])
+drstar = -0.0025 * rhos** (np.arange(T)[:, np.newaxis])
 dpi = G['pi']['rstar'] @ drstar
 
 plt.plot(10000 * dpi[:21])
@@ -210,4 +210,10 @@ plt.xlabel('quarters')
 plt.ylabel('bp deviation from ss')
 plt.show()
 
-
+#Now let's plot labor supply
+dL=G['L']['rstar']@ drstar
+plt.plot(100 * dL[:21])
+plt.title(r'labor responses monetary policy shocks')
+plt.xlabel('quarters')
+plt.ylabel('bp deviation from ss')
+plt.show()
