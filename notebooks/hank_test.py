@@ -1,0 +1,128 @@
+# -*- coding: utf-8 -*-
+"""
+Spyder Editor
+
+This is a temporary script file.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+#imports functions and modules from the "sequence_jacobian" package. It imports the "simple" and "create_model" functions from the "sequence_jacobian" module, and it imports the "hetblocks" and "grids" modules.
+
+from sequence_jacobian import simple, create_model  # functions
+from sequence_jacobian import hetblocks, grids      # modules
+
+#defines a variable "hh" that references an object in the "hetblocks" module. It then prints information about the object's inputs, macro outputs, and micro outputs.
+hh = hetblocks.hh_labor.hh
+
+print(hh)
+print(f'Inputs: {hh.inputs}')
+print(f'Macro outputs: {hh.outputs}')
+print(f'Micro outputs: {hh.internals}')
+
+# defines a function called "make_grid" that takes in several parameters and returns a tuple of arrays. 
+#The function generates a grid of values for economic variables, including the expected value of earnings, 
+#the probability distribution of earnings, the transition matrix between states, and a grid of values for assets.
+def make_grid(rho_e, sd_e, nE, amin, amax, nA):
+    e_grid, pi_e, Pi = grids.markov_rouwenhorst(rho=rho_e, sigma=sd_e, N=nE)
+    a_grid = grids.agrid(amin=amin, amax=amax, n=nA)
+    return e_grid, pi_e, Pi, a_grid
+
+#defines a function called "transfers" that takes in several parameters and returns an array. 
+#The function calculates transfers to households based on the incidence rules proportional to skill, 
+#given the distribution of earnings and a set of tax and dividend policies.
+def transfers(pi_e, Div, Tax, e_grid):
+    # hardwired incidence rules are proportional to skill; scale does not matter 
+    tax_rule, div_rule = e_grid, e_grid
+    div = Div / np.sum(pi_e * div_rule) * div_rule
+    tax = Tax / np.sum(pi_e * tax_rule) * tax_rule
+    T = div - tax
+    return T
+
+#defines a function called "wages" that takes in two parameters and returns an array. 
+#The function calculates the wage rate for each skill level based on a given overall wage rate and the distribution of skills.
+def wages(w, e_grid):
+    we = w * e_grid
+    return we
+
+#modified "hh" object called "hh1" that includes the previously defined "make_grid", "transfers", and "wages" functions as heterogeneous inputs. 
+#It then prints information about this modified object's inputs.
+hh1 = hh.add_hetinputs([make_grid, transfers, wages])
+
+print(hh1)
+print(f'Inputs: {hh1.inputs}')
+
+#modified "hh" object called "hh_ext" that includes a new heterogeneous output function called "labor_supply" 
+#that calculates the total labor supply for each skill level based on the distribution of skills and a given overall labor supply.hh_ext = hh1.add_hetoutputs([labor_supply])
+
+def labor_supply(n, e_grid):
+    ne = e_grid[:, np.newaxis] * n
+    return ne
+
+hh_ext = hh1.add_hetoutputs([labor_supply])
+print(hh_ext)
+print(f'Outputs: {hh_ext.outputs}')
+
+
+#defines several more functions using Python decorators "@simple". 
+#These functions include a model for a firm's labor and dividend decisions based on its output, wage, and productivity;
+# a model for determining the interest rate based on inflation, a natural interest rate,
+# and a parameter representing the responsiveness of inflation to interest rates; 
+#a model for determining tax revenue based on the interest rate and government debt; 
+#a model for ensuring market clearing in the labor, asset, and goods markets; 
+#and a model for the non-linear Phillips curve that determines wages based on productivity and the inflation rate.
+
+@simple
+def firm(Y, w, Z, pi, mu, kappa):
+    L = Y / Z
+    Div = Y - w * L - mu/(mu-1)/(2*kappa) * (1+pi).apply(np.log)**2 * Y
+    return L, Div
+
+
+@simple
+def monetary(pi, rstar, phi):
+    r = (1 + rstar(-1) + phi * pi(-1)) / (1 + pi) - 1
+    return r
+
+
+@simple
+def fiscal(r, B):
+    Tax = r * B
+    return Tax
+
+
+@simple
+def mkt_clearing(A, NE, C, L, Y, B, pi, mu, kappa):
+    asset_mkt = A - B
+    labor_mkt = NE - L
+    goods_mkt = Y - C - mu/(mu-1)/(2*kappa) * (1+pi).apply(np.log)**2 * Y
+    return asset_mkt, labor_mkt, goods_mkt
+
+#defines a non-linear Phillips curve function "nkpc_ss" that takes in the productivity and the parameter "mu" 
+#as inputs and returns the wage rate for each skill level.
+
+@simple
+def nkpc_ss(Z, mu):
+    w = Z / mu
+    return w
+
+
+#defines a list called "blocks_ss" that includes the "hh_ext", "firm", "monetary", "fiscal", "mkt_clearing", and "nkpc_ss" functions. These functions are then passed as arguments to the "create_model" function, which generates a new model called "hank_ss". The "name" parameter specifies the name of the new model.
+blocks_ss = [hh_ext, firm, monetary, fiscal, mkt_clearing, nkpc_ss]
+
+hank_ss = create_model(blocks_ss, name="One-Asset HANK SS")
+
+print(hank_ss)
+print(f"Inputs: {hank_ss.inputs}")
+
+#Calibration
+calibration = {'eis': 0.5, 'frisch': 0.5, 'rho_e': 0.966, 'sd_e': 0.5, 'nE': 7,
+               'amin': 0.0, 'amax': 150, 'nA': 500, 'Y': 1.0, 'Z': 1.0, 'pi': 0.0,
+               'mu': 1.2, 'kappa': 0.1, 'rstar': 0.005, 'phi': 1.5, 'B': 5.6}
+
+#Solve for the steady state
+unknowns_ss = {'beta': 0.986, 'vphi': 0.8}
+targets_ss = {'asset_mkt': 0, 'labor_mkt': 0}
+
+ss0 = hank_ss.solve_steady_state(calibration, unknowns_ss, targets_ss, solver="hybr")
