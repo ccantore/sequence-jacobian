@@ -201,7 +201,7 @@ print(G)
 #Now let's consider 25 basis point monetary policy shocks and plot the response of inflation.
 rhos = 0.9
 
-drstar = -0.0025 * rhos** (np.arange(T)[:, np.newaxis])
+drstar = +0.0025 * rhos** (np.arange(T)[:, np.newaxis])
 dpi = G['pi']['rstar'] @ drstar
 
 plt.plot(10000 * dpi[:21])
